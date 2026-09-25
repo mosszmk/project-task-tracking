@@ -102,13 +102,22 @@ export function App() {
   const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
   const [isWelcomeBannerDismissed, setIsWelcomeBannerDismissed] = useState(true);
 
-  // 1. Initial Load: Load from local cache, then sync from Google Sheet if configured
+  // 1. Initial Load: Load from local cache, ensuring ONLY MAKRO PACK 3 is present
   useEffect(() => {
     const cached = loadLocalCache();
-    if (cached) {
+    const hasOnlyMakro = 
+      cached?.projects?.length === 1 && 
+      cached.projects.some((p) => p.id === 'proj-makro-1' || p.name.includes('MAKRO PACK 3'));
+
+    if (cached && hasOnlyMakro) {
       if (cached.projects && cached.projects.length > 0) setProjects(cached.projects);
       if (cached.tasks && cached.tasks.length > 0) setTasks(cached.tasks);
       if (cached.procurements && cached.procurements.length > 0) setProcurements(cached.procurements);
+    } else {
+      setProjects(mockProjects);
+      setTasks(mockTasks);
+      setProcurements(mockProcurements);
+      saveLocalCache(mockProjects, mockTasks, mockProcurements);
     }
 
     if (getAppsScriptUrl()) {

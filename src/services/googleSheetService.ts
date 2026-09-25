@@ -149,3 +149,48 @@ export const syncToGoogleSheet = async (
     return false;
   }
 };
+
+export const uploadFileToGoogleDrive = async (
+  file: File
+): Promise<{ fileUrl: string; fileName: string; fileSize: string } | null> => {
+  const scriptUrl = getAppsScriptUrl();
+  if (!scriptUrl) return null;
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Data = (reader.result as string).split(',')[1];
+        const payload = JSON.stringify({
+          action: 'uploadFile',
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          base64Data,
+        });
+
+        const response = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload,
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          resolve({
+            fileUrl: result.fileUrl,
+            fileName: result.fileName,
+            fileSize: file.size < 1024 * 1024 
+              ? `${Math.round(file.size / 1024)} KB` 
+              : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+          });
+        } else {
+          reject(new Error(result.message || 'Upload to Google Drive failed'));
+        }
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+};

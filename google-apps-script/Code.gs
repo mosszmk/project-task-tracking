@@ -93,6 +93,30 @@ function doPost(e) {
       });
     }
 
+    if (action === "uploadFile") {
+      var folderId = "1fWXvxxKx8rckEhDgDNLwuYC7310PKyGE";
+      var folder;
+      try {
+        folder = DriveApp.getFolderById(folderId);
+      } catch (err) {
+        folder = DriveApp.getRootFolder();
+      }
+      var decoded = Utilities.base64Decode(postData.base64Data);
+      var blob = Utilities.newBlob(decoded, postData.mimeType || "application/octet-stream", postData.fileName);
+      var file = folder.createFile(blob);
+      try {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (e) {}
+
+      return createJsonResponse({
+        status: "success",
+        fileUrl: file.getUrl(),
+        fileId: file.getId(),
+        fileName: file.getName(),
+        timestamp: new Date().toISOString()
+      });
+    }
+
     return createJsonResponse({
       status: "error",
       message: "Unknown action: " + action

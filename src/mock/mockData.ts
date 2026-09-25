@@ -153,13 +153,259 @@ export const mockUsers: User[] = [
 export const currentUser: User = mockUsers[6];
 
 // ========================================================
-// Blank initial state - Clean workspace with 0 mock data
+// Initial State: MAKRO PACK 3 UCC ROAST MASTER CAPSULE
 // ========================================================
-export const mockProjects: Project[] = [];
+export const mockProjects: Project[] = [
+  {
+    id: 'proj-makro-1',
+    name: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    code: 'MAKRO-PACK-3',
+    type: 'Packaging',
+    department: 'B2C',
+    category: 'Packaging',
+    color: '#b45309', // Warm Amber Brown
+    lead: mockUsers[6], // Wanwisa Chanpraprai (Assistant Product Manager - NPD)
+    summaryStatus: 'In Progress',
+    targetDate: '01 Nov 2026',
+    dueDate: '2026-11-01',
+    description: 'Process breakdown & schedule for Makro Pack 3 : UCC Roast Master Capsule production and nationwide distribution.',
+    statusNotes: [
+      'Customer Confirm Order completed on 10 Sep 2026',
+      'AW Paper Sleeve & Carton Final Design ready and submitted for production',
+      'Production ongoing with target delivery to Sino on 20-23 Oct 2026',
+    ],
+    artwork: {
+      type: 'single',
+      primaryUrl: '',
+      labelPrimary: 'Makro Pack 3 Packaging Artwork',
+    },
+    attachments: [],
+  },
+];
 
-export const mockTasks: Task[] = [];
+export const mockTasks: Task[] = [
+  // 1. MKT (1 items)
+  {
+    id: 'task-m-1',
+    taskName: 'Customer Confirm Order',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[2], // Supaluk Laisupasin (SL)
+    role: 'B2C Assistant GM',
+    phase: 'MKT',
+    status: 'Done',
+    priority: 'High',
+    startDate: '2026-09-10',
+    dueDate: '2026-09-10',
+    durationDays: 1,
+    isMilestone: false,
+  },
+
+  // 2. AW PACKAGING (2 items)
+  {
+    id: 'task-m-2',
+    taskName: 'Paper Sleeve Final Design',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[5], // Ketsarin Setkhum (KS)
+    role: 'Graphic Designer',
+    phase: 'AW PACKAGING',
+    status: 'Done',
+    priority: 'High',
+    startDate: '2026-09-21',
+    dueDate: '2026-09-22',
+    durationDays: 2,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-3',
+    taskName: 'Carton Final Design',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[5], // Ketsarin Setkhum (KS)
+    role: 'Graphic Designer',
+    phase: 'AW PACKAGING',
+    status: 'Done',
+    priority: 'High',
+    startDate: '2026-09-21',
+    dueDate: '2026-09-22',
+    durationDays: 2,
+    isMilestone: false,
+  },
+
+  // 3. MATERIAL DELIVERY (6 items)
+  {
+    id: 'task-m-4',
+    taskName: 'Submit AW Paper Sleeve',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'Done',
+    priority: 'Medium',
+    startDate: '2026-09-22',
+    dueDate: '2026-09-22',
+    durationDays: 1,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-5',
+    taskName: 'Paper Sleeve Production',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'In Progress',
+    priority: 'High',
+    startDate: '2026-09-22',
+    dueDate: '2026-10-07',
+    durationDays: 12,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-6',
+    taskName: 'Submit AW Carton',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'Done',
+    priority: 'Medium',
+    startDate: '2026-09-22',
+    dueDate: '2026-09-22',
+    durationDays: 1,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-7',
+    taskName: 'Carton Production',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'In Progress',
+    priority: 'High',
+    startDate: '2026-09-22',
+    dueDate: '2026-10-07',
+    durationDays: 12,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-8',
+    taskName: 'Paper Sleeve delivery',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'Not Started',
+    priority: 'Medium',
+    startDate: '2026-10-07',
+    dueDate: '2026-10-08',
+    durationDays: 2,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-9',
+    taskName: 'Carton delivery',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'MATERIAL DELIVERY',
+    status: 'Not Started',
+    priority: 'Medium',
+    startDate: '2026-10-07',
+    dueDate: '2026-10-07',
+    durationDays: 1,
+    isMilestone: false,
+  },
+
+  // 4. PRODUCTION & LAUNCH (3 items)
+  {
+    id: 'task-m-10',
+    taskName: 'Re-packaging Production',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'PRODUCTION & LAUNCH',
+    status: 'Not Started',
+    priority: 'High',
+    startDate: '2026-10-09',
+    dueDate: '2026-10-19',
+    durationDays: 7,
+    isMilestone: false,
+  },
+  {
+    id: 'task-m-11',
+    taskName: 'Delivery to SINO ( 1 m. before on shelf)',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'PRODUCTION & LAUNCH',
+    status: 'Not Started',
+    priority: 'High',
+    startDate: '2026-10-20',
+    dueDate: '2026-10-23',
+    durationDays: 4,
+    isMilestone: true,
+  },
+  {
+    id: 'task-m-12',
+    taskName: 'On Shelf',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectLead: mockUsers[6],
+    assignee: mockUsers[6], // Wanwisa Chanpraprai (WC)
+    role: 'Assistant Product Manager (NPD)',
+    phase: 'PRODUCTION & LAUNCH',
+    status: 'Not Started',
+    priority: 'High',
+    startDate: '2026-11-01',
+    dueDate: '2026-11-01',
+    durationDays: 1,
+    isMilestone: true,
+  },
+];
 
 // Marketing Budget & PR/PO Procurement
 export const marketingTotalBudget = 5000000; // ฿5,000,000 Total Annual/H2 B2C Budget
 
-export const mockProcurements: ProcurementRecord[] = [];
+export const mockProcurements: ProcurementRecord[] = [
+  {
+    id: 'proc-makro-1',
+    prNumber: '2609PQKT000081',
+    projectId: 'proj-makro-1',
+    projectName: 'PROCESS BREAKDOWN & SCHEDULE (MAKRO PACK 3 : UCC ROAST MASTER CAPSULE)',
+    projectCode: 'MAKRO-PACK-3',
+    title: 'ค่า Paper Sleeve Makro Capsule pack3 & พิมพ์กล่องลูกฟูก Carton',
+    expenseCategory: 'Packaging Production',
+    supplierName: 'บจก. สยามบรรจุภัณฑ์ & พริ้นติ้ง โซลูชั่น',
+    amountTHB: 85000.00,
+    vatIncluded: true,
+    procurementStatus: 'Draft',
+    leadTimeDays: 15,
+    targetDeliveryDate: '2026-10-07',
+    requestedBy: mockUsers[6],
+    createdAt: '2026-09-21',
+    notes: 'บันทึกค่าใช้จ่ายโปรเจกต์ MAKRO PACK 3',
+    quotations: [],
+  },
+];
