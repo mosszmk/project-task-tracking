@@ -3,7 +3,7 @@ import { Project, ProjectSummaryStatus, ProjectType, Department } from '../../ty
 import { ArtworkThumbnail } from './ArtworkThumbnail';
 import { SummaryStatusPill } from './SummaryStatusPill';
 import { UserAvatar } from '../common/UserAvatar';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, toISODate } from '../../utils/dateUtils';
 import { 
   Printer, 
   Share2, 
@@ -17,10 +17,14 @@ import {
   ChevronRight,
   ExternalLink,
   Layers,
+  Trophy,
+  Clock,
+  Edit3,
   Receipt,
   AlertTriangle,
-  Trophy,
-  Clock
+  ArrowUpDown,
+  Check,
+  X
 } from 'lucide-react';
 import { ProcurementRecord } from '../../types';
 
@@ -28,18 +32,23 @@ interface ProjectStatusSummaryProps {
   projects: Project[];
   procurements?: ProcurementRecord[];
   onUpdateSummaryStatus: (projectId: string, status: ProjectSummaryStatus) => void;
+  onUpdateStatusNotes?: (projectId: string, notes: string[]) => void;
   onOpenAttachmentModal: (project: Project) => void;
   onOpenQuotationComparison?: (record: ProcurementRecord) => void;
   onNavigateToBudget?: (projectId?: string) => void;
+  onEditProject?: (project: Project) => void;
+  onEditArtwork?: (project: Project) => void;
 }
 
 const DEPARTMENTS: ('All' | Department)[] = ['All', 'Event & Trade', 'Design', 'Marketing', 'Brand', 'R&D'];
 const PROJECT_TYPES: ('All' | ProjectType)[] = [
   'All', 
-  'Event & Exhibition', 
-  'Creative & Graphic', 
+  'NPD (New Formula)',
+  'NPD (Special Set)',
+  'New Product',
   'Packaging', 
-  'New Product', 
+  'Creative & Graphic', 
+  'Event & Exhibition', 
   'Campaign', 
   'POSM'
 ];
@@ -49,19 +58,54 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
   projects,
   procurements = [],
   onUpdateSummaryStatus,
+  onUpdateStatusNotes,
   onOpenAttachmentModal,
   onOpenQuotationComparison,
   onNavigateToBudget,
+  onEditProject,
+  onEditArtwork,
 }) => {
   const [selectedDept, setSelectedDept] = useState<'All' | Department>('All');
   const [selectedType, setSelectedType] = useState<'All' | ProjectType>('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | ProjectSummaryStatus>('All');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedToast, setCopiedToast] = useState(false);
 
-  // Filter logic
+  // Inline editing state for Status & Key Milestone Updates
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingNotesText, setEditingNotesText] = useState<string>('');
+
+  const handleStartEditNotes = (project: Project) => {
+    setEditingProjectId(project.id);
+    setEditingNotesText((project.statusNotes || []).join('\n'));
+  };
+
+  const handleSaveNotes = (projectId: string) => {
+    const notesArray = editingNotesText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (onUpdateStatusNotes) {
+      onUpdateStatusNotes(projectId, notesArray);
+    } else if (onEditProject) {
+      const targetProj = projects.find((p) => p.id === projectId);
+      if (targetProj) {
+        onEditProject({ ...targetProj, statusNotes: notesArray });
+      }
+    }
+    setEditingProjectId(null);
+  };
+
+  const handleCancelEditNotes = () => {
+    setEditingProjectId(null);
+    setEditingNotesText('');
+  };
+
+  // Filter & Sort logic (Default sorted by Target Date ascending: earliest first)
   const filteredProjects = useMemo(() => {
-    return projects.filter((p) => {
+    const list = projects.filter((p) => {
       if (selectedDept !== 'All' && p.department !== selectedDept) return false;
       if (selectedType !== 'All' && p.type !== selectedType) return false;
       if (selectedStatus !== 'All' && p.summaryStatus !== selectedStatus) return false;
@@ -75,7 +119,14 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
       }
       return true;
     });
-  }, [projects, selectedDept, selectedType, selectedStatus, searchQuery]);
+
+    return [...list].sort((a, b) => {
+      const dateA = toISODate(a.targetDate) || toISODate(a.dueDate) || '9999-99-99';
+      const dateB = toISODate(b.targetDate) || toISODate(b.dueDate) || '9999-99-99';
+      const cmp = dateA.localeCompare(dateB);
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [projects, selectedDept, selectedType, selectedStatus, searchQuery, sortDirection]);
 
   // Statistics
   const totalCount = filteredProjects.length;
@@ -108,8 +159,12 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
         return 'bg-indigo-100 text-indigo-800 border-indigo-300 font-medium';
       case 'Packaging':
         return 'bg-amber-100 text-amber-800 border-amber-200 font-medium';
+      case 'NPD (New Formula)':
+        return 'bg-gradient-to-r from-sky-900 to-sky-950 text-sky-200 border-sky-700 font-semibold shadow-xs';
+      case 'NPD (Special Set)':
+        return 'bg-gradient-to-r from-amber-900 to-amber-950 text-amber-200 border-amber-700 font-semibold shadow-xs';
       case 'New Product':
-        return 'bg-slate-900 text-white border-slate-700 font-medium';
+        return 'bg-sky-100 text-sky-900 border-sky-300 font-medium';
       case 'Campaign':
         return 'bg-blue-100 text-blue-800 border-blue-200 font-medium';
       case 'POSM':
@@ -210,6 +265,21 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
               ))}
             </select>
           </div>
+
+          {/* Quick Sort by Target Date Toggle */}
+          <button
+            type="button"
+            onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg font-medium transition-colors cursor-pointer shadow-2xs"
+            title="คลิกเพื่อสลับการเรียงลำดับ Target Date (ใกล้ถึงก่อน / ไกลสุดก่อน)"
+          >
+            <Calendar className="w-3.5 h-3.5 text-amber-700" />
+            <span>เรียงตาม Target Date:</span>
+            <span className="font-semibold text-[11px] px-1.5 py-0.2 bg-amber-200/90 rounded text-amber-950 flex items-center gap-0.5">
+              <span>{sortDirection === 'asc' ? 'ใกล้ถึงก่อน (Earliest)' : 'ไกลสุดก่อน (Latest)'}</span>
+              <span className="font-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+            </span>
+          </button>
         </div>
 
         {/* Text Search */}
@@ -233,11 +303,22 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
               <tr className="bg-slate-900 text-white text-[11px] font-medium uppercase tracking-wider border-b border-slate-800">
                 <th className="py-3 px-3 w-12 text-center">No.</th>
                 <th className="py-3 px-4 w-72">Project Name & Type</th>
-                <th className="py-3 px-4 w-44 text-center">AW / Key Visual</th>
+                <th className="py-3 px-4 w-48 min-w-[170px] text-center">AW / Key Visual</th>
                 <th className="py-3 px-4 min-w-[340px]">Status & Key Milestone Updates</th>
                 <th className="py-3 px-4 w-48 text-center">งบจัดซื้อ (Budget & PR/PO)</th>
                 <th className="py-3 px-4 w-48">Owner & Dept</th>
-                <th className="py-3 px-4 w-32 text-center">Target Date</th>
+                <th 
+                  onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+                  className="py-3 px-4 w-36 text-center cursor-pointer select-none hover:bg-slate-800 transition-colors group"
+                  title="คลิกเพื่อสลับการเรียงลำดับ Target Date"
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-amber-300 font-semibold group-hover:text-amber-200">Target Date</span>
+                    <span className="text-amber-400 font-bold text-xs bg-slate-800 px-1 py-0.2 rounded border border-amber-400/40">
+                      {sortDirection === 'asc' ? '▲' : '▼'}
+                    </span>
+                  </div>
+                </th>
                 <th className="py-3 px-3 w-16 text-center no-print">Files</th>
               </tr>
             </thead>
@@ -277,12 +358,30 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
                       {/* 2. Project Name + Type Pill */}
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col gap-1.5">
-                          <span className={`inline-block w-fit text-[10px] font-medium uppercase px-2 py-0.5 rounded border ${getTypeBadgeStyle(project.type)}`}>
-                            {project.type}
-                          </span>
-                          <span className="font-medium text-slate-900 text-xs tracking-tight group-hover:text-indigo-600 transition-colors">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`inline-block w-fit text-[10px] font-medium uppercase px-2 py-0.5 rounded border ${getTypeBadgeStyle(project.type)}`}>
+                              {project.type}
+                            </span>
+                            {onEditProject && (
+                              <button
+                                type="button"
+                                onClick={() => onEditProject(project)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded flex items-center gap-1 text-[10.5px] font-medium no-print cursor-pointer"
+                                title="แก้ไขข้อมูลโครงการนี้"
+                              >
+                                <Edit3 className="w-3 h-3 text-indigo-600" />
+                                <span>แก้ไข</span>
+                              </button>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onEditProject ? onEditProject(project) : null}
+                            className="text-left font-medium text-slate-900 text-xs tracking-tight hover:text-indigo-600 transition-colors cursor-pointer"
+                            title="คลิกเพื่อแก้ไขข้อมูลโครงการ"
+                          >
                             {project.name}
-                          </span>
+                          </button>
                           <span className="font-mono text-[10px] text-slate-400">
                             {project.code}
                           </span>
@@ -295,6 +394,7 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
                           <ArtworkThumbnail
                             artwork={project.artwork}
                             projectName={project.name}
+                            onEditArtwork={onEditArtwork ? () => onEditArtwork(project) : undefined}
                           />
                         </div>
                       </td>
@@ -304,7 +404,7 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
                         <div className="flex flex-col gap-2">
                           <div>
                             <SummaryStatusPill
-                              status={isProcurementAtRisk ? 'At Risk' : project.summaryStatus}
+                              status={project.summaryStatus}
                               onChange={(newSt) => onUpdateSummaryStatus(project.id, newSt)}
                             />
                           </div>
@@ -322,14 +422,78 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
                             </div>
                           )}
 
-                          {/* Bullet points detailing milestone work */}
-                          <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside leading-relaxed bg-slate-50/70 p-2 rounded-lg border border-slate-100">
-                            {project.statusNotes.map((note, noteIdx) => (
-                              <li key={noteIdx} className="text-slate-700">
-                                <span className="text-slate-600">{note}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          {/* Bullet points detailing milestone work - Directly editable */}
+                          {editingProjectId === project.id ? (
+                            <div className="flex flex-col gap-1.5 bg-white p-2.5 rounded-xl border-2 border-indigo-500 shadow-md animate-in fade-in duration-100">
+                              <div className="flex items-center justify-between text-[11px] text-slate-700 font-semibold border-b border-slate-100 pb-1.5">
+                                <span className="flex items-center gap-1.5 text-indigo-700">
+                                  <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+                                  พิมพ์แก้ไข Status & Key Milestone Updates
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal">กด Enter แยกแต่ละข้อ</span>
+                              </div>
+                              <textarea
+                                autoFocus
+                                rows={Math.max(3, editingNotesText.split('\n').length)}
+                                value={editingNotesText}
+                                onChange={(e) => setEditingNotesText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveNotes(project.id);
+                                  } else if (e.key === 'Escape') {
+                                    handleCancelEditNotes();
+                                  }
+                                }}
+                                placeholder="พิมพ์รายละเอียดความคืบหน้างาน / Key Milestone (กด Enter เพื่อแยกข้อ)..."
+                                className="w-full text-xs text-slate-800 bg-slate-50 focus:bg-white border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-y leading-relaxed font-sans"
+                              />
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
+                                <span className="text-[10px] text-slate-400 font-medium">Ctrl + Enter เพื่อบันทึก</span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEditNotes}
+                                    className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    ยกเลิก
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveNotes(project.id)}
+                                    className="px-3.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>บันทึก</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div 
+                              onClick={() => handleStartEditNotes(project)}
+                              className="group/notes relative p-2.5 bg-slate-50/80 hover:bg-indigo-50/40 rounded-xl border border-slate-200/80 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                              title="คลิกเพื่อพิมพ์แก้ไข Status & Key Milestone Updates"
+                            >
+                              {project.statusNotes && project.statusNotes.length > 0 ? (
+                                <ul className="space-y-1 text-[11px] text-slate-700 list-disc list-inside leading-relaxed">
+                                  {project.statusNotes.map((note, noteIdx) => (
+                                    <li key={noteIdx} className="text-slate-700">
+                                      <span className="text-slate-600">{note}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-[11px] text-slate-400 italic">
+                                  + คลิกเพื่อพิมพ์ข้อความอัปเดตงาน (Key Milestone)...
+                                </p>
+                              )}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover/notes:opacity-100 transition-opacity px-1.5 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 text-indigo-600 rounded-md shadow-xs flex items-center gap-1 text-[10px] font-medium pointer-events-none">
+                                <Edit3 className="w-3 h-3 text-indigo-600" />
+                                <span>พิมพ์แก้ไข</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -414,29 +578,47 @@ export const ProjectStatusSummary: React.FC<ProjectStatusSummaryProps> = ({
                         </div>
                       </td>
 
-                      {/* 6. Target Date */}
+                      {/* 6. Target Date (Clickable to Edit with Calendar) */}
                       <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800 text-xs font-medium font-mono">
-                          <Calendar className="w-3 h-3 text-slate-500" />
-                          <span>{formatDate(project.targetDate)}</span>
-                        </span>
-                      </td>
-
-                      {/* 7. Files / Attachment Modal Trigger */}
-                      <td className="py-3.5 px-3 text-center no-print">
                         <button
                           type="button"
-                          onClick={() => onOpenAttachmentModal(project)}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors inline-flex items-center justify-center relative"
-                          title="Open File Attachments"
+                          onClick={() => onEditProject ? onEditProject(project) : null}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-800 hover:text-indigo-800 text-xs font-medium font-mono transition-all cursor-pointer group/date"
+                          title="คลิกเพื่อเลือกวันเป้าหมายจากปฏิทิน (Edit Date)"
                         >
-                          <Paperclip className="w-4 h-4" />
-                          {attachmentCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-medium flex items-center justify-center">
-                              {attachmentCount}
-                            </span>
-                          )}
+                          <Calendar className="w-3 h-3 text-slate-500 group-hover/date:text-indigo-600" />
+                          <span>{formatDate(project.targetDate || project.dueDate)}</span>
                         </button>
+                      </td>
+
+                      {/* 7. Files / Attachment Modal Trigger & Actions */}
+                      <td className="py-3.5 px-3 text-center no-print">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAttachmentModal(project)}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors inline-flex items-center justify-center relative cursor-pointer"
+                            title="เปิดดูไฟล์แนบเอกสาร"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                            {attachmentCount > 0 && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-medium flex items-center justify-center">
+                                {attachmentCount}
+                              </span>
+                            )}
+                          </button>
+
+                          {onEditProject && (
+                            <button
+                              type="button"
+                              onClick={() => onEditProject(project)}
+                              className="p-1.5 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors inline-flex items-center justify-center cursor-pointer"
+                              title="แก้ไขข้อมูลโครงการ (Edit Project)"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

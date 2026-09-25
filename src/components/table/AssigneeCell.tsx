@@ -16,7 +16,19 @@ export const AssigneeCell: React.FC<AssigneeCellProps> = ({
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // If space below is less than 320px, flip upward
+      setOpenUpward(spaceBelow < 320);
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -33,12 +45,12 @@ export const AssigneeCell: React.FC<AssigneeCellProps> = ({
   }, [isOpen]);
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className={`relative inline-block text-left ${isOpen ? 'z-50' : 'z-10'}`} ref={dropdownRef}>
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors text-left group"
+        onClick={handleToggle}
+        className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors text-left group cursor-pointer"
         title="Click to reassign"
       >
         <UserAvatar user={assignee} size="sm" />
@@ -47,13 +59,13 @@ export const AssigneeCell: React.FC<AssigneeCellProps> = ({
             {assignee.name}
           </span>
         </div>
-        <ChevronDown className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ChevronDown className={`w-3 h-3 text-slate-400 opacity-60 group-hover:opacity-100 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Reassign Dropdown */}
+      {/* Reassign Dropdown (Smart flipped if near bottom) */}
       {isOpen && (
-        <div className="absolute left-0 mt-1 w-52 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+        <div className={`absolute left-0 ${openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100`}>
+          <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
             Reassign Task
           </div>
           {mockUsers.map((user) => {

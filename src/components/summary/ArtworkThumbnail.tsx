@@ -1,23 +1,47 @@
 import React, { useState } from 'react';
 import { ArtworkInfo } from '../../types';
-import { Image, ArrowRight, Maximize2, X } from 'lucide-react';
+import { Image, ArrowRight, Maximize2, X, Plus, Edit2 } from 'lucide-react';
 
 interface ArtworkThumbnailProps {
   artwork?: ArtworkInfo;
   projectName: string;
+  onEditArtwork?: () => void;
 }
 
 export const ArtworkThumbnail: React.FC<ArtworkThumbnailProps> = ({
   artwork,
   projectName,
+  onEditArtwork,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeView, setActiveView] = useState<'both' | 'before' | 'after'>('both');
 
   if (!artwork) {
+    if (onEditArtwork) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditArtwork();
+          }}
+          className="w-28 h-14 rounded-lg border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 flex flex-col items-center justify-center text-indigo-600 transition-all cursor-pointer group/btn shadow-2xs hover:shadow-xs"
+          title="คลิกเพื่อเพิ่มรูป Artwork / Key Visual"
+        >
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-indigo-700">
+            <Plus className="w-3.5 h-3.5 text-indigo-600" />
+            <span>+ เพิ่มรูป AW</span>
+          </div>
+          <span className="text-[9px] text-indigo-400 group-hover/btn:text-indigo-600 font-medium">
+            อัปโหลด / URL
+          </span>
+        </button>
+      );
+    }
+
     return (
-      <div className="w-28 h-16 rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400">
-        <Image className="w-5 h-5 mb-0.5 opacity-50" />
+      <div className="w-28 h-14 rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400">
+        <Image className="w-4 h-4 mb-0.5 opacity-50" />
         <span className="text-[10px]">No Artwork</span>
       </div>
     );
@@ -33,17 +57,17 @@ export const ArtworkThumbnail: React.FC<ArtworkThumbnailProps> = ({
       >
         {isBeforeAfter ? (
           /* Dual / Before & After Thumbnail */
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition-all w-fit">
+          <div className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition-all w-fit shadow-2xs">
             {/* Old / Current Thumbnail */}
-            <div className="relative w-14 h-14 rounded-md overflow-hidden bg-slate-200 flex-shrink-0 group/img">
+            <div 
+              className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-md overflow-hidden bg-white p-0.5 border border-slate-200 flex-shrink-0 group/img flex items-center justify-center"
+              title={artwork.labelSecondary || 'Old Packaging (Previous)'}
+            >
               <img
                 src={artwork.secondaryUrl}
                 alt={artwork.labelSecondary || 'Old Packaging'}
-                className="w-full h-full object-cover filter grayscale-[20%] group-hover/img:scale-105 transition-transform"
+                className="w-full h-full object-contain filter grayscale-[15%] group-hover/img:scale-105 transition-transform"
               />
-              <span className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-[8px] font-medium text-slate-200 text-center py-0.5 tracking-tight uppercase">
-                Old
-              </span>
             </div>
 
             {/* Arrow Indicator */}
@@ -52,36 +76,60 @@ export const ArtworkThumbnail: React.FC<ArtworkThumbnailProps> = ({
             </div>
 
             {/* New / Next Gen Thumbnail */}
-            <div className="relative w-14 h-14 rounded-md overflow-hidden bg-slate-200 flex-shrink-0 group/img ring-1 ring-emerald-500/50">
+            <div 
+              className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-md overflow-hidden bg-white p-0.5 border border-emerald-300 ring-1 ring-emerald-500/40 flex-shrink-0 group/img flex items-center justify-center shadow-2xs"
+              title={artwork.labelPrimary || 'New Packaging (Approved)'}
+            >
               <img
                 src={artwork.primaryUrl}
                 alt={artwork.labelPrimary || 'New Packaging'}
-                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform"
+                className="w-full h-full object-contain group-hover/img:scale-105 transition-transform"
               />
-              <span className="absolute bottom-0 inset-x-0 bg-emerald-700/90 text-[8px] font-medium text-white text-center py-0.5 tracking-tight uppercase">
-                New
-              </span>
             </div>
 
-            <div className="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+            <div className="absolute inset-0 bg-slate-900/15 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity pointer-events-none">
               <Maximize2 className="w-4 h-4 text-white drop-shadow" />
             </div>
+            {onEditArtwork && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditArtwork();
+                }}
+                className="absolute top-1 right-1 p-1 bg-slate-900/80 hover:bg-indigo-600 text-white rounded-md shadow-xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                title="แก้ไข / เปลี่ยนรูป AW"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
+            )}
           </div>
         ) : (
-          /* Single Thumbnail */
-          <div className="relative w-28 h-14 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group-hover:border-indigo-400 hover:shadow-xs transition-all">
+          /* Single Thumbnail: Full image visible, no text overlay */
+          <div 
+            className="relative w-36 h-20 sm:w-40 sm:h-22 rounded-lg overflow-hidden border border-slate-200 bg-white p-1 group-hover:border-indigo-400 hover:shadow-xs transition-all flex items-center justify-center shadow-2xs"
+            title={`${artwork.labelPrimary || projectName} (คลิกเพื่อดูรูปขยาย)`}
+          >
             <img
               src={artwork.primaryUrl}
               alt={artwork.labelPrimary || projectName}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform"
             />
-            <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-              <Maximize2 className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-slate-900/15 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+              <Maximize2 className="w-4 h-4 text-white drop-shadow" />
             </div>
-            {artwork.labelPrimary && (
-              <span className="absolute bottom-0 inset-x-0 bg-slate-900/75 text-[9px] font-medium text-slate-100 text-center py-0.5 truncate px-1">
-                {artwork.labelPrimary}
-              </span>
+            {onEditArtwork && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditArtwork();
+                }}
+                className="absolute top-1 right-1 p-1 bg-slate-900/80 hover:bg-indigo-600 text-white rounded-md shadow-xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer z-10"
+                title="แก้ไข / เปลี่ยนรูป AW"
+              >
+                <Edit2 className="w-3 h-3" />
+              </button>
             )}
           </div>
         )}
@@ -105,12 +153,27 @@ export const ArtworkThumbnail: React.FC<ArtworkThumbnailProps> = ({
                 </span>
                 <h3 className="text-base font-semibold text-slate-900">{projectName}</h3>
               </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {onEditArtwork && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      onEditArtwork();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>แก้ไข / เปลี่ยนรูป AW</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* View switcher if Before/After */}

@@ -10,7 +10,10 @@ import {
   TaskStatus, 
   User,
   ProcurementRecord,
-  ProcurementStatus
+  ProcurementStatus,
+  ArtworkInfo,
+  GraphicSpecs,
+  TaskAttachmentCategory
 } from './types';
 import { mockProjects, mockTasks, mockUsers, currentUser, mockProcurements, marketingTotalBudget } from './mock/mockData';
 import { Header } from './components/layout/Header';
@@ -24,11 +27,15 @@ import { KanbanView } from './components/views/KanbanView';
 import { ExecutiveDashboardView } from './components/views/ExecutiveDashboardView';
 import { BudgetProcurementView } from './components/views/BudgetProcurementView';
 import { NewProjectModal } from './components/modals/NewProjectModal';
+import { EditProjectModal } from './components/modals/EditProjectModal';
+import { ArtworkUploadModal } from './components/modals/ArtworkUploadModal';
 import { NewTaskModal } from './components/modals/NewTaskModal';
+import { EditTaskModal } from './components/modals/EditTaskModal';
 import { FileAttachmentModal } from './components/modals/FileAttachmentModal';
 import { TaskAttachmentModal } from './components/modals/TaskAttachmentModal';
 import { QuickGuideModal } from './components/modals/QuickGuideModal';
 import { QuotationComparisonModal } from './components/modals/QuotationComparisonModal';
+import { generateTasksForProject } from './templates/projectTemplates';
 import { NewProcurementModal } from './components/modals/NewProcurementModal';
 import { GoogleSyncModal } from './components/modals/GoogleSyncModal';
 import { 
@@ -67,15 +74,25 @@ export function App() {
 
   // Modals State
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [selectedProjectForEdit, setSelectedProjectForEdit] = useState<Project | null>(null);
+
+  const [isArtworkModalOpen, setIsArtworkModalOpen] = useState(false);
+  const [selectedProjectForArtwork, setSelectedProjectForArtwork] = useState<Project | null>(null);
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [targetProjectIdForTask, setTargetProjectIdForTask] = useState<string | null>(null);
   const [targetPhaseForTask, setTargetPhaseForTask] = useState<string | undefined>(undefined);
+
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
 
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
   const [selectedProjectForAttachment, setSelectedProjectForAttachment] = useState<Project | null>(null);
 
   const [isTaskAttachmentModalOpen, setIsTaskAttachmentModalOpen] = useState(false);
   const [selectedTaskForAttachment, setSelectedTaskForAttachment] = useState<Task | null>(null);
+  const [taskAttachmentCategory, setTaskAttachmentCategory] = useState<TaskAttachmentCategory>('brief_specs');
 
   // Budget & Procurement Modals State
   const [selectedProcurementForComparison, setSelectedProcurementForComparison] = useState<ProcurementRecord | null>(null);
@@ -248,8 +265,11 @@ export function App() {
     setIsTaskModalOpen(true);
   };
 
-  // 1. Create Project
-  const handleCreateProject = (newProjectData: Omit<Project, 'id' | 'attachments'>) => {
+  // 1. Create Project (With optional auto-generation of 34 template tasks)
+  const handleCreateProject = (
+    newProjectData: Omit<Project, 'id' | 'attachments'>,
+    generateTemplate: boolean = false
+  ) => {
     const newProjId = `proj-${Date.now()}`;
     const newProject: Project = {
       ...newProjectData,
@@ -259,6 +279,94 @@ export function App() {
     setProjects((prev) => [newProject, ...prev]);
     setSelectedGanttProjectId(newProjId);
     setActiveProjectId(newProjId);
+
+    // If requested or if type is NPD, generate the corresponding 34 workflow tasks
+    if (
+      generateTemplate || 
+      newProject.type === 'NPD (New Formula)' || 
+      newProject.type === 'New Product' || 
+      newProject.type === 'NPD (Special Set)'
+    ) {
+      const templateKey = (newProject.type === 'NPD (Special Set)') ? 'npd_special_set' : 'npd_new_product';
+      const templateTasks = generateTasksForProject(newProject, templateKey, mockUsers);
+      setTasks((prev) => [...prev, ...templateTasks]);
+    }
+  };
+
+  // 1.05 Apply Workflow Template to an existing project (e.g. from GanttView toolbar or empty state)
+  const handleApplyTemplate = (projectId: string, templateKey?: string) => {
+    const proj = projects.find((p) => p.id === projectId);
+    if (!proj) return;
+    const resolvedKey = templateKey || (proj.type === 'NPD (Special Set)' ? 'npd_special_set' : 'npd_new_product');
+    const templateTasks = generateTasksForProject(proj, resolvedKey, mockUsers);
+    setTasks((prev) => [...prev, ...templateTasks]);
+  };
+
+  // 1.1 Edit Project
+  const handleOpenEditProjectModal = (project: Project) => {
+    setSelectedProjectForEdit(project);
+    setIsEditProjectModalOpen(true);
+  };
+
+  const handleUpdateProject = (updatedProject: Project) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+    // If project name or lead changed, keep associated tasks in sync
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.projectId === updatedProject.id
+          ? {
+              ...t,
+              projectName: updatedProject.name,
+              projectLead: updatedProject.lead,
+            }
+          : t
+      )
+    );
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    setTasks((prev) => prev.filter((t) => t.projectId !== projectId));
+    setProcurements((prev) => prev.filter((pr) => pr.projectId !== projectId));
+    if (activeProjectId === projectId) setActiveProjectId(null);
+    if (selectedGanttProjectId === projectId) setSelectedGanttProjectId('');
+  };
+
+  // 1.2 Artwork Upload & Manager
+  const handleOpenArtworkModal = (project: Project) => {
+    setSelectedProjectForArtwork(project);
+    setIsArtworkModalOpen(true);
+  };
+
+  const handleSaveArtwork = (projectId: string, artwork: ArtworkInfo | undefined) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, artwork } : p))
+    );
+    setSelectedProjectForEdit((prev) =>
+      prev && prev.id === projectId ? { ...prev, artwork } : prev
+    );
+  };
+
+  // 1.3 Task Dates Mutator (Interactive Calendar Picker)
+  const handleUpdateTaskDates = (taskId: string, startDate: string, dueDate: string) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const start = new Date(startDate);
+          const due = new Date(dueDate);
+          const diffDays = Math.max(1, Math.round((due.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+          return {
+            ...t,
+            startDate,
+            dueDate,
+            durationDays: diffDays,
+          };
+        }
+        return t;
+      })
+    );
   };
 
   // 2. Add Task to Project
@@ -292,6 +400,17 @@ export function App() {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
   };
 
+  const handleOpenEditTaskModal = (task: Task) => {
+    setSelectedTaskForEdit(task);
+    setIsEditTaskModalOpen(true);
+  };
+
+  const handleUpdateTask = (updatedTask: Task) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
+  };
+
   const handleQuickAddTask = (projectId: string, taskName: string) => {
     const proj = projects.find((p) => p.id === projectId) || projects[0];
     if (!proj) return;
@@ -317,6 +436,12 @@ export function App() {
   const handleUpdateSummaryStatus = (projectId: string, newStatus: ProjectSummaryStatus) => {
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, summaryStatus: newStatus } : p))
+    );
+  };
+
+  const handleUpdateProjectStatusNotes = (projectId: string, newNotes: string[]) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, statusNotes: newNotes } : p))
     );
   };
 
@@ -346,9 +471,16 @@ export function App() {
     );
   };
 
-  const handleOpenTaskAttachmentModal = (task: Task) => {
+  const handleOpenTaskAttachmentModal = (task: Task, initialCategory?: TaskAttachmentCategory) => {
     setSelectedTaskForAttachment(task);
+    setTaskAttachmentCategory(initialCategory || 'brief_specs');
     setIsTaskAttachmentModalOpen(true);
+  };
+
+  const handleUpdateTaskSpecs = (taskId: string, newSpecs: GraphicSpecs) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, graphicSpecs: newSpecs } : t))
+    );
   };
 
   const handleAddTaskAttachment = (taskId: string, newAttachment: Omit<TaskAttachment, 'id'>) => {
@@ -659,6 +791,9 @@ export function App() {
               onOpenNewProjectModal={handleOpenNewProjectModal}
               onUpdateTaskStatus={handleUpdateStatus}
               onOpenTaskAttachmentModal={handleOpenTaskAttachmentModal}
+              onEditProject={handleOpenEditProjectModal}
+              onEditTask={handleOpenEditTaskModal}
+              onApplyTemplate={handleApplyTemplate}
             />
           )}
 
@@ -673,6 +808,10 @@ export function App() {
               onQuickAddTask={handleQuickAddTask}
               onOpenTaskAttachmentModal={handleOpenTaskAttachmentModal}
               isGraphicQueue={activeView === 'graphic-queue'}
+              onEditProject={handleOpenEditProjectModal}
+              onUpdateTaskDates={handleUpdateTaskDates}
+              onEditTask={handleOpenEditTaskModal}
+              onUpdateTaskSpecs={handleUpdateTaskSpecs}
             />
           )}
 
@@ -682,12 +821,15 @@ export function App() {
               projects={filteredProjects}
               procurements={procurements}
               onUpdateSummaryStatus={handleUpdateSummaryStatus}
+              onUpdateStatusNotes={handleUpdateProjectStatusNotes}
               onOpenAttachmentModal={handleOpenAttachmentModal}
               onOpenQuotationComparison={handleOpenQuotationComparison}
               onNavigateToBudget={(projectId) => {
                 if (projectId) setActiveProjectId(projectId);
                 handleTabChange('budget-procurement');
               }}
+              onEditProject={handleOpenEditProjectModal}
+              onEditArtwork={handleOpenArtworkModal}
             />
           )}
 
@@ -729,6 +871,7 @@ export function App() {
               onOpenNewTaskModal={(pId, defaultPhase) => handleOpenNewTaskModal(pId, defaultPhase)}
               onOpenTaskAttachmentModal={handleOpenTaskAttachmentModal}
               onDeleteTask={handleDeleteTask}
+              onEditTask={handleOpenEditTaskModal}
             />
           )}
         </main>
@@ -738,6 +881,30 @@ export function App() {
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
         onCreateProject={handleCreateProject}
+      />
+
+      {/* Modal 1.1: Edit Existing Project */}
+      <EditProjectModal
+        isOpen={isEditProjectModalOpen}
+        project={selectedProjectForEdit}
+        onClose={() => {
+          setIsEditProjectModalOpen(false);
+          setSelectedProjectForEdit(null);
+        }}
+        onSaveProject={handleUpdateProject}
+        onDeleteProject={handleDeleteProject}
+        onOpenArtworkModal={handleOpenArtworkModal}
+      />
+
+      {/* Modal 1.2: Artwork & Key Visual Upload / Manager */}
+      <ArtworkUploadModal
+        isOpen={isArtworkModalOpen}
+        project={selectedProjectForArtwork}
+        onClose={() => {
+          setIsArtworkModalOpen(false);
+          setSelectedProjectForArtwork(null);
+        }}
+        onSaveArtwork={handleSaveArtwork}
       />
 
       {/* Modal 2: Add Task to Project */}
@@ -755,6 +922,27 @@ export function App() {
         defaultPhase={targetPhaseForTask}
       />
 
+      {/* Modal 2.1: Edit Existing Task */}
+      <EditTaskModal
+        isOpen={isEditTaskModalOpen}
+        task={selectedTaskForEdit}
+        projects={projects}
+        onClose={() => {
+          setIsEditTaskModalOpen(false);
+          setSelectedTaskForEdit(null);
+        }}
+        onSaveTask={handleUpdateTask}
+        onDeleteTask={(taskId) => {
+          handleDeleteTask(taskId);
+          setIsEditTaskModalOpen(false);
+          setSelectedTaskForEdit(null);
+        }}
+        onOpenAttachmentModal={(task) => {
+          setIsEditTaskModalOpen(false);
+          handleOpenTaskAttachmentModal(task);
+        }}
+      />
+
       {/* Modal 3: Categorized File Attachments */}
       <FileAttachmentModal
         project={selectedProjectForAttachment}
@@ -770,6 +958,7 @@ export function App() {
       <TaskAttachmentModal
         task={selectedTaskForAttachment}
         isOpen={isTaskAttachmentModalOpen}
+        initialCategory={taskAttachmentCategory}
         onClose={() => {
           setIsTaskAttachmentModalOpen(false);
           setSelectedTaskForAttachment(null);

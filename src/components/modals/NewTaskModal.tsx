@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Project, Task, TaskPriority, TaskStatus, User, UserRole, TaskAttachment, TaskAttachmentCategory } from '../../types';
 import { mockUsers, mockProjects, currentUser } from '../../mock/mockData';
 import { X, Plus, Palette, Calendar, Clock, Flag, Layers, Tent, Search, ChevronDown, Check, Sparkles, Paperclip, UploadCloud, Trash2, FileText, FileSpreadsheet, Receipt, FileBox, FileCheck } from 'lucide-react';
+import { calculateWorkingDaysInclusive, addWorkingDays } from '../../utils/dateUtils';
 
 interface NewTaskModalProps {
   isOpen: boolean;
@@ -137,9 +138,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   const handleStartDateChange = (val: string) => {
     setStartDate(val);
     if (val && durationDays > 0) {
-      const d = new Date(val);
-      d.setDate(d.getDate() + durationDays);
-      setDueDate(d.toISOString().slice(0, 10));
+      setDueDate(addWorkingDays(val, durationDays));
+    }
+  };
+
+  const handleDueDateChange = (val: string) => {
+    setDueDate(val);
+    if (startDate && val) {
+      setDurationDays(calculateWorkingDaysInclusive(startDate, val));
     }
   };
 
@@ -147,15 +153,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     const validDays = Math.max(1, days);
     setDurationDays(validDays);
     if (startDate && validDays > 0) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + validDays);
-      setDueDate(d.toISOString().slice(0, 10));
+      setDueDate(addWorkingDays(startDate, validDays));
     }
   };
 
   // Graphic specs
-  const [graphicFormat, setGraphicFormat] = useState<any>('Event Backdrop');
-  const [dimensions, setDimensions] = useState('6000 x 3000 mm');
+  const [graphicFormat, setGraphicFormat] = useState<any>('Packaging / Box');
+  const [dimensions, setDimensions] = useState('Box / Pouch Specs');
 
   // Update projectId when defaultProjectId prop changes
   useEffect(() => {
@@ -166,16 +170,24 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         if (proj.type === 'Event & Exhibition') {
           setPhase('Booth Design & 3D');
           setRole('Event Coordinator');
+          setGraphicFormat('Event Backdrop');
+          setDimensions('6000 x 3000 mm');
         } else if (proj.type === 'Creative & Graphic') {
           setPhase('Editorial Layout');
           setRole('Graphic Designer');
+          setGraphicFormat('1:1 Square');
+          setDimensions('1080 x 1080 px');
         } else if (proj.type === 'Packaging') {
           setPhase('AW Packaging');
           setRole('Graphic Designer');
+          setGraphicFormat('Packaging / Box');
+          setDimensions('Box / Pouch Specs');
         } else if (proj.type === 'New Product') {
           setPhase('NPD & Formulation');
           setRole('Assistant Product Manager (NPD)');
           setAssigneeId('user-7'); // Default to Wanwisa Chanpraprai (NPD Lead)
+          setGraphicFormat('Packaging / Box');
+          setDimensions('Product Specs');
         }
       }
     }
@@ -202,18 +214,24 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     else if (['doc', 'docx'].includes(ext || '')) detectedType = 'word';
     else if (['ai', 'psd', 'fig', 'eps'].includes(ext || '')) detectedType = 'ai';
 
-    const newAttachment: TaskAttachment = {
-      id: `new-att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: fileName,
-      category: attachmentCategory,
-      size: sizeStr,
-      fileType: detectedType,
-      uploadedAt: new Date().toISOString().slice(0, 10),
-      uploadedBy: currentUser.name,
-      url: URL.createObjectURL(file),
-    };
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = (ev.target?.result as string) || '#';
+      const newAttachment: TaskAttachment = {
+        id: `new-att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: fileName,
+        category: attachmentCategory,
+        size: sizeStr,
+        fileType: detectedType,
+        uploadedAt: new Date().toISOString().slice(0, 10),
+        uploadedBy: currentUser.name,
+        url: dataUrl,
+      };
 
-    setAttachments((prev) => [...prev, newAttachment]);
+      setAttachments((prev) => [...prev, newAttachment]);
+    };
+    reader.readAsDataURL(file);
+
     if (taskFileInputRef.current) taskFileInputRef.current.value = '';
   };
 
@@ -550,7 +568,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <input
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => handleDueDateChange(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-medium"
               />
             </div>

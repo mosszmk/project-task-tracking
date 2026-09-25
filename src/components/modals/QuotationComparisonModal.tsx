@@ -37,7 +37,12 @@ export const QuotationComparisonModal: React.FC<QuotationComparisonModalProps> =
   const selectedQuote = quotations.find((q) => q.isSelected) || quotations[0];
 
   const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(amount);
+    return new Intl.NumberFormat('th-TH', { 
+      style: 'currency', 
+      currency: 'THB', 
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2, 
+      maximumFractionDigits: 2 
+    }).format(amount);
   };
 
   return (

@@ -1,9 +1,9 @@
-import React from 'react';
-import { Task, TaskStatus, User } from '../../types';
+import React, { useState } from 'react';
+import { Task, TaskStatus, User, GraphicSpecs, TaskAttachmentCategory } from '../../types';
 import { StatusPill } from './StatusPill';
 import { AssigneeCell } from './AssigneeCell';
 import { GraphicSpecsTag } from './GraphicSpecsTag';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, toISODate } from '../../utils/dateUtils';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -12,7 +12,10 @@ import {
   MoreHorizontal, 
   Trash2,
   ListTodo,
-  Paperclip
+  Paperclip,
+  Check,
+  X,
+  Edit2
 } from 'lucide-react';
 
 interface TaskRowProps {
@@ -22,7 +25,10 @@ interface TaskRowProps {
   onDeleteTask: (taskId: string) => void;
   isSelected: boolean;
   onToggleSelect: (taskId: string) => void;
-  onOpenAttachmentModal?: (task: Task) => void;
+  onOpenAttachmentModal?: (task: Task, initialCategory?: TaskAttachmentCategory) => void;
+  onUpdateDates?: (taskId: string, startDate: string, dueDate: string) => void;
+  onEditTask?: (task: Task) => void;
+  onUpdateTaskSpecs?: (taskId: string, newSpecs: GraphicSpecs) => void;
 }
 
 const PRIORITY_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
@@ -40,12 +46,19 @@ export const TaskRow: React.FC<TaskRowProps> = ({
   isSelected,
   onToggleSelect,
   onOpenAttachmentModal,
+  onUpdateDates,
+  onEditTask,
+  onUpdateTaskSpecs,
 }) => {
   const isCompleted = task.status === 'Done' || (task.status as string) === 'Completed';
   const isGraphicRole = task.role === 'Graphic Designer';
   const isReadyForGraphic = task.status === 'Ready for Graphic';
   const priorityStyle = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES['Medium'];
   const attachmentCount = (task.attachments || []).length;
+
+  const [isEditingDates, setIsEditingDates] = useState(false);
+  const [tempStart, setTempStart] = useState(toISODate(task.startDate) || '2026-06-01');
+  const [tempDue, setTempDue] = useState(toISODate(task.dueDate) || '2026-06-15');
 
   return (
     <tr 
@@ -85,13 +98,19 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
-              <span
-                className={`text-xs font-semibold tracking-tight transition-all ${
+              <button
+                type="button"
+                onClick={() => onEditTask ? onEditTask(task) : undefined}
+                className={`text-xs font-semibold tracking-tight transition-all text-left hover:text-indigo-600 flex items-center gap-1.5 cursor-pointer group/title ${
                   isCompleted ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                 }`}
+                title="คลิกเพื่อแก้ไขรายละเอียดงาน (Edit Task Details)"
               >
-                {task.taskName}
-              </span>
+                <span>{task.taskName}</span>
+                {onEditTask && (
+                  <Edit2 className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+                )}
+              </button>
 
               {/* Role Badge */}
               <span
@@ -144,21 +163,73 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         </span>
       </td>
 
-      {/* Date Range */}
+      {/* Date Range (Clickable to Edit with Calendar) */}
       <td className="py-2.5 px-3 min-w-[210px] whitespace-nowrap">
-        <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>
-            {formatDate(task.startDate)} – {formatDate(task.dueDate)}
-          </span>
-        </div>
+        {isEditingDates ? (
+          <div className="flex items-center gap-1.5 p-1 bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs">
+            <input
+              type="date"
+              value={tempStart}
+              onChange={(e) => setTempStart(e.target.value)}
+              className="px-1.5 py-0.5 text-[11px] bg-white border border-slate-300 rounded font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              title="วันเริ่มต้น (Start Date)"
+            />
+            <span className="text-slate-400 font-bold text-xs">–</span>
+            <input
+              type="date"
+              value={tempDue}
+              onChange={(e) => setTempDue(e.target.value)}
+              className="px-1.5 py-0.5 text-[11px] bg-white border border-slate-300 rounded font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              title="วันสิ้นสุด (Due Date)"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                onUpdateDates?.(task.id, tempStart, tempDue);
+                setIsEditingDates(false);
+              }}
+              className="p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors cursor-pointer"
+              title="บันทึกวันที่"
+            >
+              <Check className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditingDates(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors cursor-pointer"
+              title="ยกเลิก"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setTempStart(toISODate(task.startDate) || '2026-06-01');
+              setTempDue(toISODate(task.dueDate) || '2026-06-15');
+              setIsEditingDates(true);
+            }}
+            className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-indigo-600 font-medium px-2 py-1 rounded-md hover:bg-indigo-50/70 border border-transparent hover:border-indigo-200 transition-all cursor-pointer group/date"
+            title="คลิกเพื่อเลือกวันเริ่ม - สิ้นสุดจากปฏิทิน (Edit Dates)"
+          >
+            <Calendar className="w-3.5 h-3.5 text-slate-400 group-hover/date:text-indigo-600" />
+            <span>
+              {formatDate(task.startDate)} – {formatDate(task.dueDate)}
+            </span>
+            <Edit2 className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover/date:opacity-100 transition-opacity ml-0.5" />
+          </button>
+        )}
       </td>
 
       {/* Graphic Specs & Handoff Badge */}
       <td className="py-2.5 px-3 w-48">
         <GraphicSpecsTag
+          task={task}
           specs={task.graphicSpecs}
           showHandoffBadge={isReadyForGraphic || (isGraphicRole && task.status === 'Designing')}
+          onOpenAttachmentModal={onOpenAttachmentModal}
+          onUpdateSpecs={onUpdateTaskSpecs}
         />
       </td>
 
@@ -167,8 +238,8 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         {attachmentCount > 0 ? (
           <button
             type="button"
-            onClick={() => onOpenAttachmentModal?.(task)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 font-medium text-xs transition-colors shadow-2xs group/att cursor-pointer"
+            onClick={() => onOpenAttachmentModal?.(task, 'pr_quotation')}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 font-semibold text-xs transition-colors shadow-2xs group/att cursor-pointer"
             title={`มีไฟล์แนบ ${attachmentCount} รายการ (คลิกเพื่อเปิดดูหรือดาวน์โหลดเอกสาร PR / สเปก)`}
           >
             <Paperclip className="w-3.5 h-3.5 text-indigo-600" />
@@ -178,12 +249,12 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         ) : (
           <button
             type="button"
-            onClick={() => onOpenAttachmentModal?.(task)}
-            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors opacity-40 group-hover:opacity-100 inline-flex items-center justify-center gap-1 cursor-pointer"
-            title="คลิกเพื่อแนบเอกสาร (ใบเสนอราคา, PR, สเปกสินค้า)"
+            onClick={() => onOpenAttachmentModal?.(task, 'pr_quotation')}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-indigo-700 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg transition-all shadow-2xs cursor-pointer"
+            title="คลิกเพื่อแนบเอกสาร (ใบเสนอราคา, PR, PO, สเปกสินค้า)"
           >
-            <Paperclip className="w-3.5 h-3.5" />
-            <span className="text-[10px] text-slate-500 hover:text-indigo-600 font-semibold">+ แนบ</span>
+            <Paperclip className="w-3.5 h-3.5 text-slate-500" />
+            <span>+ แนบไฟล์</span>
           </button>
         )}
       </td>

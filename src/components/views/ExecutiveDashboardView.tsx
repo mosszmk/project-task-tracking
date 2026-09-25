@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Task, Project, User, TaskStatus, ProcurementRecord } from '../../types';
 import { mockUsers } from '../../mock/mockData';
 import { UserAvatar } from '../common/UserAvatar';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, toISODate } from '../../utils/dateUtils';
 import { StatusPill } from '../table/StatusPill';
 import { PriorityPill } from '../table/PriorityPill';
 import { 
@@ -150,9 +150,15 @@ export const ExecutiveDashboardView: React.FC<ExecutiveDashboardViewProps> = ({
     });
   }, [projects, tasks, selectedProjectId, selectedAssigneeId, selectedStatus, searchQuery]);
 
-  // Unfinished projects on-hand (reactive to filter)
+  // Unfinished projects on-hand (reactive to filter, sorted by Target Date)
   const displayUnfinishedProjects = useMemo(() => {
-    return filteredProjects.filter((p) => p.summaryStatus !== 'Completed');
+    return filteredProjects
+      .filter((p) => p.summaryStatus !== 'Completed')
+      .sort((a, b) => {
+        const dateA = toISODate(a.targetDate || a.dueDate) || '9999-99-99';
+        const dateB = toISODate(b.targetDate || b.dueDate) || '9999-99-99';
+        return dateA.localeCompare(dateB);
+      });
   }, [filteredProjects]);
 
   const displayCompletedProjectsCount = useMemo(() => {

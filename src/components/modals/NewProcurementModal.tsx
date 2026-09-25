@@ -58,11 +58,13 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
 }) => {
   const [projectId, setProjectId] = useState<string>(defaultProjectId || projects[0]?.id || '');
   const [title, setTitle] = useState('');
+  const [prNumber, setPrNumber] = useState('');
+  const [poNumber, setPoNumber] = useState('');
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>('Packaging Production');
   const [targetDeliveryDate, setTargetDeliveryDate] = useState(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   );
-  const [status, setStatus] = useState<ProcurementStatus>('PR Pending Approval');
+  const [status, setStatus] = useState<ProcurementStatus>('PO Issued');
   const [notes, setNotes] = useState('');
 
   // 1-3 Supplier Quotes state
@@ -149,11 +151,12 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
       selectionReason: idx === selectedWinnerIndex ? selectionReason : undefined,
     }));
 
-    const prNum = `PR-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const prNum = prNumber.trim() || `PR-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const finalPoNum = poNumber.trim() || (status === 'PO Issued' ? `PO-2026-${Math.floor(100 + Math.random() * 900)}` : undefined);
 
     onCreateProcurement({
       prNumber: prNum,
-      poNumber: status === 'PO Issued' ? `PO-2026-${Math.floor(100 + Math.random() * 900)}` : undefined,
+      poNumber: finalPoNum,
       projectId: selectedProj.id,
       projectName: selectedProj.name,
       projectCode: selectedProj.code,
@@ -175,6 +178,8 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
     onClose();
     // Reset form
     setTitle('');
+    setPrNumber('');
+    setPoNumber('');
     setNotes('');
   };
 
@@ -194,9 +199,9 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
               <Receipt className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-slate-900">เปิดเอกสารขอซื้อ / ขอจ้าง (New PR)</h3>
+              <h3 className="text-base font-semibold text-slate-900">บันทึกค่าใช้จ่ายโครงการ / ข้อมูลจัดซื้อ (Project Expense & Procurement)</h3>
               <p className="text-xs text-slate-500">
-                กรอกรายละเอียดการจัดซื้อ แนบเปรียบเทียบใบเสนอราคา 2-3 เจ้า และเลือกลิงก์กับโปรเจกต์
+                กรอกข้อมูลเพื่อบันทึกค่าใช้จ่ายในโปรเจกต์ (สำหรับติดตามงบประมาณโครงการ ไม่มีการขออนุมัติในระบบ)
               </p>
             </div>
           </div>
@@ -211,6 +216,16 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+          {/* Note Banner */}
+          <div className="px-3.5 py-2.5 bg-blue-50/80 border border-blue-200/90 rounded-xl flex items-center gap-2.5 text-xs text-blue-900">
+            <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+            <span>
+              <strong>หน้านี้ใช้สำหรับบันทึกค่าใช้จ่ายในโปรเจกต์เท่านั้น</strong> เพื่อติดตามงบประมาณจริงและข้อมูลซัพพลายเออร์ (ไม่มีการขออนุมัติในระบบ)
+            </span>
+          </div>
+
           {/* Section 1: Basic Info & Project Link */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Target Project */}
@@ -261,16 +276,63 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
               autoFocus
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="เช่น พิมพ์ Can Sleeve & กล่องลูกฟูก Carton 280ml (Lot 1), ผลิตโครงสร้างบูธ 3D"
+              placeholder="เช่น ค่า Paper Sleeve Makro Capsule pack3 : 2609PQKT000081, พิมพ์กล่องลูกฟูก Carton"
               className="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
             />
           </div>
 
-          {/* Target Delivery Date & Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Reference Numbers, Dates & Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* PR Number */}
             <div>
               <label className="block text-xs font-medium uppercase tracking-wider text-slate-700 mb-1">
-                วันที่ต้องการรับสินค้าหน้างาน (Target Delivery Date)
+                เลขที่ PR (PR Number)
+              </label>
+              <input
+                type="text"
+                value={prNumber}
+                onChange={(e) => setPrNumber(e.target.value)}
+                placeholder="เช่น 2609PQKT000081 หรือ PR-001"
+                className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
+              />
+            </div>
+
+            {/* PO Number */}
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-700 mb-1">
+                เลขที่ PO (PO Number - ถ้ามี)
+              </label>
+              <input
+                type="text"
+                value={poNumber}
+                onChange={(e) => setPoNumber(e.target.value)}
+                placeholder="เช่น PO-2026-001"
+                className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-700 mb-1">
+                สถานะ (Status)
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ProcurementStatus)}
+                className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
+              >
+                <option value="PO Issued">PO Issued (ได้รับเลข PO แล้ว)</option>
+                <option value="PR Pending Approval">PR Recorded (บันทึกเลข PR แล้ว)</option>
+                <option value="Delivered">Delivered (ตรวจรับสินค้าแล้ว)</option>
+                <option value="Awaiting Quotes">Awaiting Quotes (กำลังรอใบเสนอราคา)</option>
+                <option value="Draft">Draft (แบบร่าง)</option>
+              </select>
+            </div>
+
+            {/* Target Delivery Date */}
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-700 mb-1">
+                วันที่ต้องการรับสินค้า
               </label>
               <input
                 type="date"
@@ -279,22 +341,6 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
                 onChange={(e) => setTargetDeliveryDate(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-slate-700 mb-1">
-                สถานะเบื้องต้น (Status)
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ProcurementStatus)}
-                className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-2xs"
-              >
-                <option value="PR Pending Approval">PR Pending Approval (ยื่น PR รออนุมัติ)</option>
-                <option value="Awaiting Quotes">Awaiting Quotes (กำลังรอใบเสนอราคา)</option>
-                <option value="Draft">Draft (ร่างคำขอซื้อ)</option>
-                <option value="PO Issued">PO Issued (ได้รับเลข PO แล้ว)</option>
-              </select>
             </div>
           </div>
 
@@ -389,10 +435,10 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
                             type="number"
                             required
                             min={0}
-                            step={100}
+                            step="any"
                             value={quote.quotedAmountTHB}
                             onChange={(e) => handleUpdateQuote(idx, 'quotedAmountTHB', e.target.value)}
-                            placeholder="850000"
+                            placeholder="เช่น 1134.40 หรือ 850000"
                             className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold"
                           />
                         </div>
@@ -443,14 +489,13 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
             {/* Selection Reason Input */}
             <div className="mt-3.5 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl">
               <label className="block text-xs font-medium text-amber-950 mb-1">
-                เหตุผลในการคัดเลือกซัพพลายเออร์ที่ชนะ (Selection Rationale) *
+                เหตุผลในการคัดเลือก / บันทึกราคา (Selection Rationale / Note)
               </label>
               <input
                 type="text"
-                required
                 value={selectionReason}
                 onChange={(e) => setSelectionReason(e.target.value)}
-                placeholder="ระบุเหตุผลในการตัดสินใจเลือกเจ้านี้ เช่น ราคาต่อหน่วยคุ้มค่าที่สุด และระยะเวลาผลิตทันกำหนด"
+                placeholder="ระบุเหตุผลในการตัดสินใจเลือกหรือเงื่อนไขราคา เช่น ราคาและคุณภาพตรงตามมาตรฐาน หรือซัพพลายเออร์เจ้าประจำ"
                 className="w-full px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-lg font-medium text-slate-800 focus:ring-2 focus:ring-amber-500/20"
               />
             </div>
@@ -465,7 +510,7 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="ข้อความเพิ่มเติมสำหรับการส่งต่อฝ่ายจัดซื้อหรือผู้บริหารพิจารณา..."
+              placeholder="บันทึกรายละเอียดเพิ่มเติมเกี่ยวกับค่าใช้จ่ายนี้ (ถ้ามี)..."
               className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
@@ -484,7 +529,7 @@ export const NewProcurementModal: React.FC<NewProcurementModalProps> = ({
               className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl shadow-sm shadow-indigo-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>เปิดคำขอซื้อ (Submit PR)</span>
+              <span>บันทึกค่าใช้จ่าย (Save Expense Record)</span>
             </button>
           </div>
         </form>

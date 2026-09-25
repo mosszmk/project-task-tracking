@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Project, Task, TaskStatus, User } from '../../types';
+import { Project, Task, TaskStatus, User, GraphicSpecs, TaskAttachmentCategory } from '../../types';
 import { TaskRow } from './TaskRow';
 import { 
   ChevronDown, 
@@ -8,7 +8,8 @@ import {
   CheckCircle, 
   User as UserIcon,
   Calendar,
-  Sparkles
+  Sparkles,
+  Edit3
 } from 'lucide-react';
 import { currentUser } from '../../mock/mockData';
 import { UserAvatar } from '../common/UserAvatar';
@@ -22,7 +23,11 @@ interface ProjectGroupProps {
   onQuickAddTask: (projectId: string, taskName: string) => void;
   selectedTaskIds: string[];
   onToggleSelectTask: (taskId: string) => void;
-  onOpenAttachmentModal?: (task: Task) => void;
+  onOpenAttachmentModal?: (task: Task, initialCategory?: TaskAttachmentCategory) => void;
+  onEditProject?: (project: Project) => void;
+  onUpdateTaskDates?: (taskId: string, startDate: string, dueDate: string) => void;
+  onEditTask?: (task: Task) => void;
+  onUpdateTaskSpecs?: (taskId: string, newSpecs: GraphicSpecs) => void;
 }
 
 export const ProjectGroup: React.FC<ProjectGroupProps> = ({
@@ -35,6 +40,10 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   selectedTaskIds,
   onToggleSelectTask,
   onOpenAttachmentModal,
+  onEditProject,
+  onUpdateTaskDates,
+  onEditTask,
+  onUpdateTaskSpecs,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [newTaskName, setNewTaskName] = useState('');
@@ -52,10 +61,10 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden mb-6 transition-all">
+    <div className="bg-white rounded-xl shadow-xs border border-slate-200 mb-6 transition-all">
       {/* Group Accordion Header */}
       <div 
-        className="px-4 py-3 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-100/60 transition-colors"
+        className="px-4 py-3 bg-slate-50/70 border-b border-slate-200 rounded-t-xl flex items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-100/60 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -83,6 +92,20 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             <span className="text-[10px] uppercase font-medium tracking-wider px-2 py-0.5 rounded bg-slate-200/80 text-slate-600">
               {project.category}
             </span>
+            {onEditProject && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditProject(project);
+                }}
+                className="p-1 hover:bg-slate-200/90 rounded text-slate-400 hover:text-indigo-600 flex items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer"
+                title="แก้ไขข้อมูลโครงการ (Edit Project)"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">แก้ไข</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -118,7 +141,7 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
 
       {/* Group Table Content */}
       {isExpanded && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[160px] pb-4">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/70 text-[10.5px] font-medium uppercase tracking-wider text-slate-500">
@@ -145,6 +168,9 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
                     isSelected={selectedTaskIds.includes(task.id)}
                     onToggleSelect={onToggleSelectTask}
                     onOpenAttachmentModal={onOpenAttachmentModal}
+                    onUpdateDates={onUpdateTaskDates}
+                    onEditTask={onEditTask}
+                    onUpdateTaskSpecs={onUpdateTaskSpecs}
                   />
                 ))
               ) : (

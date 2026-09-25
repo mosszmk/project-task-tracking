@@ -6,6 +6,8 @@ interface StatusPillProps {
   status: TaskStatus;
   onChange: (newStatus: TaskStatus) => void;
   disabled?: boolean;
+  compact?: boolean;
+  className?: string;
 }
 
 export const STATUS_CONFIG: Record<TaskStatus, { bg: string; text: string; hover: string; label: string; dot: string }> = {
@@ -45,11 +47,11 @@ export const STATUS_CONFIG: Record<TaskStatus, { bg: string; text: string; hover
     dot: 'bg-rose-200',
   },
   'Completed': {
-    bg: 'bg-emerald-500',
+    bg: 'bg-emerald-700',
     text: 'text-white',
-    hover: 'hover:bg-emerald-600',
-    label: 'Completed',
-    dot: 'bg-emerald-200',
+    hover: 'hover:bg-emerald-800',
+    label: 'Done',
+    dot: 'bg-emerald-300',
   },
   'Done': {
     bg: 'bg-emerald-700',
@@ -66,15 +68,15 @@ export const STATUS_CONFIG: Record<TaskStatus, { bg: string; text: string; hover
     dot: 'bg-amber-300',
   },
   'Not Started': {
-    bg: 'bg-sky-500',
+    bg: 'bg-slate-400',
     text: 'text-white',
-    hover: 'hover:bg-sky-600',
+    hover: 'hover:bg-slate-500',
     label: 'Not Started',
-    dot: 'bg-sky-300',
+    dot: 'bg-slate-300',
   },
 };
 
-const ALL_STATUSES: TaskStatus[] = [
+export const ALL_STATUSES: TaskStatus[] = [
   'Done',
   'In Progress',
   'Not Started',
@@ -89,11 +91,25 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   status,
   onChange,
   disabled = false,
+  compact = false,
+  className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentConfig = STATUS_CONFIG[status] || STATUS_CONFIG['Backlog'];
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // If space below is less than 320px, flip upward so it never gets clipped by table bottom
+      setOpenUpward(spaceBelow < 320);
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -110,24 +126,24 @@ export const StatusPill: React.FC<StatusPillProps> = ({
   }, [isOpen]);
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className={`relative inline-block text-left ${isOpen ? 'z-50' : 'z-10'}`} ref={dropdownRef}>
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-36 h-8 px-2.5 rounded-md text-xs font-medium transition-all duration-150 flex items-center justify-between shadow-sm cursor-pointer select-none group ${currentConfig.bg} ${currentConfig.text} ${currentConfig.hover}`}
+        onClick={handleToggle}
+        className={`${compact ? 'w-28 h-6 px-2 text-[11px]' : 'w-36 h-8 px-2.5 text-xs'} rounded-md font-medium transition-all duration-150 flex items-center justify-between shadow-2xs cursor-pointer select-none group ${currentConfig.bg} ${currentConfig.text} ${currentConfig.hover} ${className}`}
         title="Click to update status"
       >
         <span className="truncate flex-1 text-center font-medium tracking-wide">
           {currentConfig.label}
         </span>
-        <ChevronDown className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity ml-1 flex-shrink-0" />
+        <ChevronDown className={`w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-transform ml-1 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu (Smart flipped if near bottom edge) */}
       {isOpen && (
-        <div className="absolute left-0 mt-1 w-44 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+        <div className={`absolute left-0 ${openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100`}>
+          <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
             Select Status
           </div>
           {ALL_STATUSES.map((st) => {

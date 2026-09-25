@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Project, ProjectAttachment } from '../../types';
 import { 
   X, 
@@ -14,7 +14,9 @@ import {
   Sparkles, 
   Palette, 
   Printer,
-  HardDrive
+  HardDrive,
+  UploadCloud,
+  Link2
 } from 'lucide-react';
 import { currentUser } from '../../mock/mockData';
 
@@ -33,10 +35,16 @@ export const FileAttachmentModal: React.FC<FileAttachmentModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'brief_specs' | 'design_drafts' | 'final_production'>('brief_specs');
   const [showAddForm, setShowAddForm] = useState(false);
+  
+  // Upload & File Selection State
+  const [attachMode, setAttachMode] = useState<'file' | 'drive'>('file');
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [fileType, setFileType] = useState<'pdf' | 'ai' | 'figma' | 'image' | 'doc'>('pdf');
   const [fileSize, setFileSize] = useState('2.5 MB');
+  const [fileObjectUrl, setFileObjectUrl] = useState<string>('#');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen || !project) return null;
 
@@ -44,23 +52,51 @@ export const FileAttachmentModal: React.FC<FileAttachmentModalProps> = ({
     (att) => att.category === activeTab
   );
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    let fType: 'pdf' | 'ai' | 'figma' | 'image' | 'doc' = 'pdf';
+    if (ext === 'pdf') fType = 'pdf';
+    else if (['ai', 'eps', 'psd', 'cdr'].includes(ext)) fType = 'ai';
+    else if (['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) fType = 'image';
+    else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) fType = 'doc';
+    else if (['fig'].includes(ext)) fType = 'figma';
+
+    const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
+    const formattedSize = file.size > 1024 * 1024 ? `${sizeInMb} MB` : `${Math.round(file.size / 1024)} KB`;
+
+    setFileName(file.name);
+    setFileSize(formattedSize);
+    setFileType(fType);
+    setFileObjectUrl(URL.createObjectURL(file));
+  };
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fileName.trim()) return;
 
+    const finalUrl = attachMode === 'file' ? fileObjectUrl : (fileUrl.trim() || '#');
+    const finalSize = attachMode === 'drive' ? 'Google Drive' : fileSize;
+
     onAddAttachment(project.id, {
       name: fileName.trim(),
       category: activeTab,
-      size: fileType === 'figma' ? 'Figma Cloud Link' : fileUrl.includes('drive.google.com') ? 'Google Drive' : fileSize,
+      size: finalSize,
       uploadedBy: currentUser.name,
       uploadedAt: 'Today',
-      url: fileUrl.trim() || '#',
+      url: finalUrl,
       fileType,
     });
 
     setFileName('');
     setFileUrl('');
+    setFileObjectUrl('#');
     setShowAddForm(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const getFileIcon = (type: string) => {
@@ -201,63 +237,173 @@ export const FileAttachmentModal: React.FC<FileAttachmentModalProps> = ({
 
           {/* Add Form */}
           {showAddForm && (
-            <form onSubmit={handleAddSubmit} className="p-4 bg-slate-50 rounded-xl border border-indigo-200 space-y-3 animate-in fade-in duration-100">
-              <h4 className="text-xs font-medium text-slate-800 uppercase tracking-wider">
-                Attach File to {activeTab.replace('_', ' ')}
-              </h4>
+            <form onSubmit={handleAddSubmit} className="p-4 bg-slate-50 rounded-2xl border border-indigo-200/80 space-y-3.5 animate-in fade-in duration-100">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-indigo-600" />
+                  <span>แนบไฟล์เอกสารเข้า {activeTab.replace('_', ' ')}</span>
+                </h4>
+                <span className="text-[11px] text-slate-500">รองรับ PDF, AI, PSD, ภาพ, Doc</span>
+              </div>
+
+              {/* Mode Toggle: File Upload vs Cloud Link */}
+              <div className="flex rounded-xl bg-slate-200/80 p-1 max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => setAttachMode('file')}
+                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                    attachMode === 'file'
+                      ? 'bg-white text-indigo-700 shadow-2xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>เลือกไฟล์จากเครื่อง (Upload)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttachMode('drive')}
+                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                    attachMode === 'drive'
+                      ? 'bg-white text-emerald-700 shadow-2xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span>แปะลิงก์ Google Drive</span>
+                </button>
+              </div>
+
+              {attachMode === 'file' ? (
+                /* Clickable Drag & Drop Zone */
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    if (e.dataTransfer.files?.[0]) {
+                      const file = e.dataTransfer.files[0];
+                      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                      let fType: 'pdf' | 'ai' | 'figma' | 'image' | 'doc' = 'pdf';
+                      if (ext === 'pdf') fType = 'pdf';
+                      else if (['ai', 'eps', 'psd', 'cdr'].includes(ext)) fType = 'ai';
+                      else if (['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) fType = 'image';
+                      else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) fType = 'doc';
+                      else if (['fig'].includes(ext)) fType = 'figma';
+
+                      const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
+                      const formattedSize = file.size > 1024 * 1024 ? `${sizeInMb} MB` : `${Math.round(file.size / 1024)} KB`;
+
+                      setFileName(file.name);
+                      setFileSize(formattedSize);
+                      setFileType(fType);
+                      setFileObjectUrl(URL.createObjectURL(file));
+                    }
+                  }}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                    isDragOver 
+                      ? 'border-indigo-500 bg-indigo-50/70' 
+                      : fileName 
+                      ? 'border-emerald-400 bg-emerald-50/40' 
+                      : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-100/70'
+                  }`}
+                >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileSelect} 
+                    className="hidden" 
+                  />
+                  <div className="flex flex-col items-center justify-center gap-1.5">
+                    <UploadCloud className={`w-8 h-8 ${fileName ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    {fileName ? (
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-800">{fileName}</p>
+                        <p className="text-[10.5px] text-slate-500">{fileSize} &bull; คลิกเพื่อเปลี่ยนไฟล์</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-medium text-slate-700">
+                          <strong>คลิกที่นี่เพื่อเลือกไฟล์จากคอมพิวเตอร์</strong> หรือลากไฟล์มาวาง
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          รองรับ PDF Dieline, Master Artwork (AI), ภาพเรนเดอร์ 3D, สเปกสินค้า
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Google Drive / Cloud Link Input */
+                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-2">
+                  <label className="block text-[11px] font-medium text-emerald-900 flex items-center gap-1">
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>URL ลิงก์ไฟล์ใน Google Drive *</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={fileUrl}
+                    onChange={(e) => setFileUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/... หรือ ลิงก์โฟลเดอร์"
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-emerald-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 font-mono"
+                  />
+                  <p className="text-[10.5px] text-emerald-700">
+                    💡 อัปโหลดไฟล์ใส่ Google Drive แล้วกด Share &gt; "คัดลอกลิงก์" มาวางที่นี่
+                  </p>
+                </div>
+              )}
+
+              {/* File Name & Type (auto-filled or editable) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-1">File Name *</label>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">ชื่อเอกสาร (File Name) *</label>
                   <input
                     type="text"
                     required
-                    autoFocus
                     value={fileName}
                     onChange={(e) => setFileName(e.target.value)}
                     placeholder="e.g. Master_Roast_Pouch_Dieline.pdf"
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-1">File Type</label>
+                  <label className="block text-[11px] font-medium text-slate-700 mb-1">ประเภทเอกสาร (File Type)</label>
                   <select
                     value={fileType}
                     onChange={(e) => setFileType(e.target.value as any)}
-                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none font-medium"
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-hidden font-medium text-slate-800"
                   >
-                    <option value="pdf">PDF Document (.pdf)</option>
-                    <option value="ai">Adobe Illustrator (.ai)</option>
-                    <option value="figma">Figma Cloud Link (.figma)</option>
-                    <option value="image">High-Res Image (.psd, .png)</option>
-                    <option value="doc">Word / Copy Deck (.doc)</option>
+                    <option value="pdf">📄 PDF Document (.pdf)</option>
+                    <option value="ai">🎨 Adobe Illustrator / CAD (.ai, .psd)</option>
+                    <option value="figma">🌐 Figma Cloud Link (.figma)</option>
+                    <option value="image">🖼️ ภาพความละเอียดสูง (.png, .jpg)</option>
+                    <option value="doc">📝 Word / Copy Deck (.doc, .docx)</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">Link URL (Optional Cloud Drive / Figma)</label>
-                <input
-                  type="text"
-                  value={fileUrl}
-                  onChange={(e) => setFileUrl(e.target.value)}
-                  placeholder="https://figma.com/... or https://drive.google.com/..."
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none"
-                />
-              </div>
-
+              {/* Submit Buttons */}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-200 rounded-md"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200/70 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md shadow-xs"
+                  disabled={!fileName.trim()}
+                  className={`px-4 py-1.5 text-white text-xs font-medium rounded-lg shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 ${
+                    attachMode === 'drive'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
                 >
-                  Confirm Attach
+                  {attachMode === 'drive' ? <HardDrive className="w-3.5 h-3.5" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                  <span>{attachMode === 'drive' ? 'แนบลิงก์ Google Drive' : 'อัปโหลดไฟล์เข้าโปรเจกต์'}</span>
                 </button>
               </div>
             </form>
@@ -266,53 +412,66 @@ export const FileAttachmentModal: React.FC<FileAttachmentModalProps> = ({
           {/* Attachments List */}
           <div className="space-y-2">
             {currentAttachments.length > 0 ? (
-              currentAttachments.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50/70 transition-all bg-white"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                      {getFileIcon(file.fileType)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-900 truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {file.size} &bull; Uploaded by <strong className="text-slate-600">{file.uploadedBy}</strong> ({file.uploadedAt})
-                      </p>
-                    </div>
-                  </div>
+              currentAttachments.map((file) => {
+                const isDrive = file.size === 'Google Drive' || file.url.includes('drive.google.com');
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <a
-                      href={file.url}
-                      onClick={(e) => {
-                        if (file.url === '#') {
-                          e.preventDefault();
-                          alert(`Simulated download for: ${file.name}`);
-                        }
-                      }}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg border border-indigo-200/60 transition-colors flex items-center gap-1"
-                    >
-                      {file.fileType === 'figma' ? (
-                        <>
-                          <span>Open</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </>
-                      ) : (
-                        <>
-                          <span>Download</span>
-                          <Download className="w-3 h-3" />
-                        </>
-                      )}
-                    </a>
+                return (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50/70 transition-all bg-white"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        {getFileIcon(file.fileType)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-medium text-slate-900 truncate">
+                            {file.name}
+                          </p>
+                          {isDrive && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              <HardDrive className="w-2.5 h-2.5 text-emerald-600" />
+                              Google Drive
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {file.size} &bull; Uploaded by <strong className="text-slate-600">{file.uploadedBy}</strong> ({file.uploadedAt})
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <a
+                        href={file.url}
+                        download={isDrive ? undefined : file.name}
+                        onClick={(e) => {
+                          if (file.url === '#') {
+                            e.preventDefault();
+                            alert(`File: ${file.name}`);
+                          }
+                        }}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg border border-indigo-200/60 transition-colors flex items-center gap-1"
+                      >
+                        {isDrive ? (
+                          <>
+                            <span>เปิดไฟล์</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </>
+                        ) : (
+                          <>
+                            <span>Download</span>
+                            <Download className="w-3 h-3" />
+                          </>
+                        )}
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="py-10 text-center border-2 border-dashed border-slate-200 rounded-xl">
                 <Paperclip className="w-7 h-7 text-slate-300 mx-auto mb-2" />

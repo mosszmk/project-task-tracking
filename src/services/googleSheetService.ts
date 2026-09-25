@@ -40,7 +40,21 @@ export const saveLocalCache = (projects: Project[], tasks: Task[], procurements:
     localStorage.setItem(STORAGE_KEY_PROCUREMENTS, JSON.stringify(procurements));
     localStorage.setItem(STORAGE_KEY_LAST_SYNC, new Date().toISOString());
   } catch (err) {
-    console.warn('Failed to save to local cache:', err);
+    console.warn('Failed to save to local cache, saving safe lightweight version without heavy base64 data:', err);
+    try {
+      const lightweightTasks = tasks.map((t) => ({
+        ...t,
+        attachments: t.attachments?.map((a) => ({
+          ...a,
+          url: a.url && a.url.startsWith('data:') && a.url.length > 50000 ? '#' : a.url,
+        })),
+      }));
+      localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(lightweightTasks));
+      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
+      localStorage.setItem(STORAGE_KEY_PROCUREMENTS, JSON.stringify(procurements));
+    } catch (e2) {
+      console.warn('LocalStorage quota exceeded completely:', e2);
+    }
   }
 };
 

@@ -46,9 +46,14 @@ export const BudgetProcurementView: React.FC<BudgetProcurementViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
-  // Format currency helper
+  // Format currency helper (supports decimals e.g. 1134.40)
   const formatMoney = (val: number) => {
-    return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(val);
+    return new Intl.NumberFormat('th-TH', { 
+      style: 'currency', 
+      currency: 'THB', 
+      minimumFractionDigits: val % 1 === 0 ? 0 : 2, 
+      maximumFractionDigits: 2 
+    }).format(val);
   };
 
   // 1. Calculate KPI Metrics
@@ -131,13 +136,13 @@ export const BudgetProcurementView: React.FC<BudgetProcurementViewProps> = ({
           </p>
         </div>
 
-        {/* Top Action: + New PR */}
+        {/* Top Action: + Record Expense */}
         <button
           onClick={() => onOpenNewPRModal()}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium shadow-sm shadow-indigo-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>+ New PR Request</span>
+          <span>+ บันทึกค่าใช้จ่ายใหม่ (+ Record Expense)</span>
         </button>
       </div>
 

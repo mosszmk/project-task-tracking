@@ -46,7 +46,7 @@ export interface User {
 }
 
 export interface GraphicSpecs {
-  format: '1:1 Square' | '16:9 Banner' | '9:16 Story/Reels' | '4:5 Portrait' | 'Event Backdrop' | 'Standee' | 'Flyer/Leaflet' | 'Custom';
+  format: '1:1 Square' | '16:9 Banner' | '9:16 Story/Reels' | '4:5 Portrait' | 'Event Backdrop' | 'Standee' | 'Flyer/Leaflet' | 'Packaging / Box' | 'Label / Sticker' | 'Pouch' | 'Custom' | string;
   dimensions?: string;
   briefUrl?: string;
   moodboardUrl?: string;
@@ -97,6 +97,8 @@ export interface Task {
 export type ProjectType = 
   | 'Packaging' 
   | 'New Product' 
+  | 'NPD (New Formula)'
+  | 'NPD (Special Set)' 
   | 'Event & Exhibition' 
   | 'Creative & Graphic' 
   | 'POSM' 
@@ -132,6 +134,7 @@ export interface Project {
   description: string;
   color: string;
   lead: User;
+  startDate?: string;
   dueDate: string;
   category: string;
   type: ProjectType;

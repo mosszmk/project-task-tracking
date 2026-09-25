@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Project, Task, TaskStatus, User } from '../../types';
+import { Project, Task, TaskStatus, User, GraphicSpecs, TaskAttachmentCategory } from '../../types';
 import { ProjectGroup } from './ProjectGroup';
 import { 
   Layers, 
@@ -20,8 +20,12 @@ interface TableViewProps {
   onQuickAddTask: (projectId: string, taskName: string) => void;
   onBulkUpdateStatus?: (taskIds: string[], status: TaskStatus) => void;
   onBulkDelete?: (taskIds: string[]) => void;
-  onOpenTaskAttachmentModal?: (task: Task) => void;
+  onOpenTaskAttachmentModal?: (task: Task, initialCategory?: TaskAttachmentCategory) => void;
   isGraphicQueue?: boolean;
+  onEditProject?: (project: Project) => void;
+  onUpdateTaskDates?: (taskId: string, startDate: string, dueDate: string) => void;
+  onEditTask?: (task: Task) => void;
+  onUpdateTaskSpecs?: (taskId: string, newSpecs: GraphicSpecs) => void;
 }
 
 export const TableView: React.FC<TableViewProps> = ({
@@ -35,6 +39,10 @@ export const TableView: React.FC<TableViewProps> = ({
   onBulkDelete,
   onOpenTaskAttachmentModal,
   isGraphicQueue = false,
+  onEditProject,
+  onUpdateTaskDates,
+  onEditTask,
+  onUpdateTaskSpecs,
 }) => {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
 
@@ -226,6 +234,10 @@ export const TableView: React.FC<TableViewProps> = ({
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelectTask={handleToggleSelectTask}
                 onOpenAttachmentModal={onOpenTaskAttachmentModal}
+                onEditProject={onEditProject}
+                onUpdateTaskDates={onUpdateTaskDates}
+                onEditTask={onEditTask}
+                onUpdateTaskSpecs={onUpdateTaskSpecs}
               />
             );
           })

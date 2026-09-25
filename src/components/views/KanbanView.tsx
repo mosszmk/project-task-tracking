@@ -20,7 +20,8 @@ import {
   Sparkles,
   Search,
   Filter,
-  CheckSquare
+  CheckSquare,
+  Edit3
 } from 'lucide-react';
 
 interface KanbanViewProps {
@@ -30,6 +31,7 @@ interface KanbanViewProps {
   onOpenNewTaskModal?: (projectId?: string, defaultPhase?: string) => void;
   onOpenTaskAttachmentModal?: (task: Task) => void;
   onDeleteTask?: (taskId: string) => void;
+  onEditTask?: (task: Task) => void;
 }
 
 interface ColumnDef {
@@ -106,6 +108,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   onOpenNewTaskModal,
   onOpenTaskAttachmentModal,
   onDeleteTask,
+  onEditTask,
 }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dropOverCol, setDropOverCol] = useState<TaskStatus | null>(null);
@@ -341,7 +344,13 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                           draggable
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onDragEnd={handleDragEnd}
-                          onClick={() => onOpenTaskAttachmentModal && onOpenTaskAttachmentModal(task)}
+                          onClick={() => {
+                            if (onEditTask) {
+                              onEditTask(task);
+                            } else if (onOpenTaskAttachmentModal) {
+                              onOpenTaskAttachmentModal(task);
+                            }
+                          }}
                           className={`bg-white p-3.5 rounded-xl border transition-all duration-150 cursor-grab active:cursor-grabbing shadow-2xs hover:shadow-md hover:border-indigo-400 group relative ${
                             isDraggingThis ? 'opacity-40 scale-95 border-dashed border-indigo-400' : 'border-slate-200/90'
                           }`}
@@ -428,6 +437,21 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                                 <Calendar className="w-2.5 h-2.5" />
                                 <span>{task.dueDate.slice(5)}</span>
                               </span>
+
+                              {/* Edit Task Button */}
+                              {onEditTask && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditTask(task);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                  title="แก้ไขรายละเอียดงาน (Edit Task)"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                              )}
 
                               {/* Quick Move Dropdown Menu */}
                               <div className="relative" onClick={(e) => e.stopPropagation()}>
